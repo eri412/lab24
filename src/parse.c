@@ -27,7 +27,7 @@ token_vec *split2toks(char *str) {
     token_vec *vec = token_vec_create();
     unsigned int temp_num = 0;
     for (size_t i = 0; i < strlen(str); ++i) {
-        if (!isdigit(str[i]) && temp_num != 0) {
+        if (i != 0 && !isdigit(str[i]) && isdigit(str[i-1])) {
             token temp_stack_tok = {EXPR_NUM, '\0', temp_num};
             token_vec_push(vec, temp_stack_tok);
             temp_num = 0;
@@ -94,7 +94,7 @@ token_vec *split2toks(char *str) {
             return NULL;
         }
     }
-    if (temp_num != 0) {
+    if (isdigit(str[strlen(str) - 1])) {
         token temp_stack_tok = {EXPR_NUM, '\0', temp_num};
         token_vec_push(vec, temp_stack_tok);
     }

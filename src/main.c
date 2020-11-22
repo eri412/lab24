@@ -16,6 +16,7 @@ int main() {
         if ((post_vec = inf2post(inf_vec)) == NULL) {
             exit(1);
         }
+        //token_vec_print(inf_vec);
         token_vec_print(post_vec);
     }
 
