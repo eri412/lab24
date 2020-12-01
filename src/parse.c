@@ -3,20 +3,96 @@
 #include <string.h>
 
 #include "token_vec.h"
+#include "token_tree.h"
 #include "parse.h"
 
-#define PARSE_EXPR_NONE 0
-#define PARSE_EXPR_VARNUM 1
-#define PARSE_EXPR_L_BRACE 2
-#define PARSE_EXPR_R_BRACE 3
-#define PARSE_EXPR_UNBIN 4
+int _check_str(char *str) {
+    int num_flag = NUM_OUT;
+    int braces = 0;
+    int last_expr = PARSE_EXPR_NONE;
+    for (size_t i = 0; i < strlen(str); ++i) {
+        if (!isdigit(str[i])) {
+            num_flag = NUM_OUT;
+        }
+        if (str[i] == ' ') {
+            
+        }
+        else if (str[i] == '(') {
+            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE &&
+                last_expr != PARSE_EXPR_UNBIN)
+            {
+                return i;
+            }
+            ++braces;
+            last_expr = PARSE_EXPR_L_BRACE;
+        }
+        else if (str[i] == ')') {
+            if (last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) {
+                return i;
+            }
+            if (--braces < 0) {
+                return i;
+            }
+            last_expr = PARSE_EXPR_R_BRACE;
+        }
+        else if (isdigit(str[i])) {
+            if (num_flag == NUM_IN) {
+                continue;
+            }
+            else {
+                if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
+                    last_expr != PARSE_EXPR_UNBIN)
+                {
+                    return i;
+                }
+                num_flag = NUM_IN;
+            }
+            last_expr = PARSE_EXPR_VARNUM;
+        }
+        else if (isalpha(str[i])) {
+            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
+                last_expr != PARSE_EXPR_UNBIN)
+            {
+                return i;
+            }
+            last_expr = PARSE_EXPR_VARNUM;
+        }
+        else if (str[i] == '+' || str[i] == '-') {
+            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
+                last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) 
+            {
+                return i;
+            }
+            last_expr = PARSE_EXPR_UNBIN;
+        }
+        else if (str[i] == '*' || str[i] == '/' || str[i] == '^') {
+            if (last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) {
+                return i;
+            }
+            last_expr = PARSE_EXPR_UNBIN;
+        }
+        else {
+            return i;
+        }
+    }
+    if (braces != 0) {
+        for (size_t i = 0; i < strlen(str); ++i) {
+            if (str[i] == '(') {
+                return i;
+            }
+        }
+    }
+    char last = str[strlen(str) - 1];
+    if (!isalnum(last) && last != ')' && last != ' ') {
+        return strlen(str) - 1;
+    }
 
-#define NUM_OUT 0
-#define NUM_IN 1
+    return -1;
+}
 
 token_vec *split2toks(char *str) {
     int str_check_res;
-    if ((str_check_res = check_str(str)) != -1) {
+    if ((str_check_res = _check_str(str)) != -1) {
         printf("%s\n", str);
         for (int i = 0; i < str_check_res; ++i) {
             printf(" ");
@@ -144,86 +220,30 @@ token_vec *inf2post(token_vec *input_vec) {
     return output_vec;
 }
 
-int check_str(char *str) {
-    int num_flag = NUM_OUT;
-    int braces = 0;
-    int last_expr = PARSE_EXPR_NONE;
-    for (size_t i = 0; i < strlen(str); ++i) {
-        if (!isdigit(str[i])) {
-            num_flag = NUM_OUT;
+token_tree *post2tree(token_vec *post_vec) {
+    token_tree_vec *tree_vec = token_tree_vec_create();
+    for (size_t i = 0; i < token_vec_size(post_vec); ++i) {
+        token temp_tok = *token_vec_get(post_vec, i);
+        if (temp_tok.expression == EXPR_VAR || temp_tok.expression == EXPR_NUM) {
+            token_tree *temp_tree = token_tree_create(temp_tok, NULL, NULL, NULL);
+            token_tree_vec_push(tree_vec, temp_tree);
         }
-        if (str[i] == ' ') {
-            
+        else if (temp_tok.expression == EXPR_UN_PLUS) {
+            continue;
         }
-        else if (str[i] == '(') {
-            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE &&
-                last_expr != PARSE_EXPR_UNBIN)
-            {
-                return i;
-            }
-            ++braces;
-            last_expr = PARSE_EXPR_L_BRACE;
-        }
-        else if (str[i] == ')') {
-            if (last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) {
-                return i;
-            }
-            if (--braces < 0) {
-                return i;
-            }
-            last_expr = PARSE_EXPR_R_BRACE;
-        }
-        else if (isdigit(str[i])) {
-            if (num_flag == NUM_IN) {
-                continue;
-            }
-            else {
-                if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
-                    last_expr != PARSE_EXPR_UNBIN)
-                {
-                    return i;
-                }
-                num_flag = NUM_IN;
-            }
-            last_expr = PARSE_EXPR_VARNUM;
-        }
-        else if (isalpha(str[i])) {
-            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
-                last_expr != PARSE_EXPR_UNBIN)
-            {
-                return i;
-            }
-            last_expr = PARSE_EXPR_VARNUM;
-        }
-        else if (str[i] == '+' || str[i] == '-') {
-            if (last_expr != PARSE_EXPR_L_BRACE && last_expr != PARSE_EXPR_NONE && 
-                last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) 
-            {
-                return i;
-            }
-            last_expr = PARSE_EXPR_UNBIN;
-        }
-        else if (str[i] == '*' || str[i] == '/' || str[i] == '^') {
-            if (last_expr != PARSE_EXPR_R_BRACE && last_expr != PARSE_EXPR_VARNUM) {
-                return i;
-            }
-            last_expr = PARSE_EXPR_UNBIN;
+        else if (temp_tok.expression == EXPR_UN_MINUS) {
+            token_tree *left = token_tree_vec_pop(tree_vec);
+            token_tree *temp_tree = token_tree_create(temp_tok, NULL, left, NULL);
+            token_tree_vec_push(tree_vec, temp_tree);
         }
         else {
-            return i;
+            token_tree *right = token_tree_vec_pop(tree_vec);
+            token_tree *left = token_tree_vec_pop(tree_vec);
+            token_tree *temp_tree = token_tree_create(temp_tok, NULL, left, right);
+            token_tree_vec_push(tree_vec, temp_tree);
         }
     }
-    if (braces != 0) {
-        for (size_t i = 0; i < strlen(str); ++i) {
-            if (str[i] == '(') {
-                return i;
-            }
-        }
-    }
-    char last = str[strlen(str) - 1];
-    if (!isalnum(last) && last != ')' && last != ' ') {
-        return strlen(str) - 1;
-    }
-
-    return -1;
+    token_tree *tree = token_tree_vec_pop(tree_vec);
+    token_tree_vec_delete(tree_vec);
+    return tree;
 }

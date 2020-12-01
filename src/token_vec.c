@@ -70,6 +70,7 @@ int _token_vec_shrink(token_vec *vec) {
 
 token token_vec_pop(token_vec *vec) {
     assert(vec->size <= vec->capacity);
+    assert(vec->size > 0);
     vec->size--;
     token temp_tok = vec->buff[vec->size];
     if (vec->capacity / CAPACITY_MULTIPLIER == vec->size) {
