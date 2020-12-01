@@ -1,7 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <math.h>
+#include <inttypes.h>
 
+#include "token.h"
 #include "token_tree.h"
 
 token_tree *token_tree_create(token tok, token_tree *parent, token_tree *left, token_tree *right) {
@@ -64,6 +67,170 @@ void _token_tree_print_aux(token_tree *tree, int level) {
 
 void token_tree_print(token_tree *tree) {
     _token_tree_print_aux(tree, 0);
+}
+
+//counting all <num> <op> <num>
+//un_plus is not in the tree
+void token_tree_simplify1(token_tree *tree) {
+    if (tree == NULL) {
+        return;
+    }
+    token_tree_simplify1(tree->left);
+    token_tree_simplify1(tree->right);
+    if (tree->left != NULL && tree->right != NULL) {
+        if ((tree->left->tok.expression == EXPR_NUM || (tree->left->tok.expression == EXPR_UN_MINUS && tree->left->left->tok.expression == EXPR_NUM)) && 
+            (tree->right->tok.expression == EXPR_NUM || (tree->right->tok.expression == EXPR_UN_MINUS && tree->right->left->tok.expression == EXPR_NUM)))
+        {
+            long long left;
+            long long right;
+            if (tree->left->tok.expression == EXPR_NUM) {
+                left = tree->left->tok.number;
+                free(tree->left);
+                tree->left = NULL;
+            }
+            else {
+                left = -1 * (long long) tree->left->left->tok.number;
+                free(tree->left->left);
+                free(tree->left);
+                tree->left = NULL;
+            }
+            if (tree->right->tok.expression == EXPR_NUM) {
+                right = tree->right->tok.number;
+                free(tree->right);
+                tree->right = NULL;
+            }
+            else {
+                right = -1 * (long long) tree->right->left->tok.number;
+                free(tree->right->left);
+                free(tree->right);
+                tree->right = NULL;
+            }
+
+            if (tree->tok.expression == EXPR_BIN_PLUS) {
+                if (left + right >= 0) {
+                    tree->tok.expression = EXPR_NUM;
+                    tree->tok.number = left + right;
+                }
+                else {
+                    tree->tok.expression = EXPR_UN_MINUS;
+                    token temp_tok = {EXPR_NUM, '\0', llabs(left + right)};
+                    tree->left = token_tree_create(temp_tok, tree, NULL, NULL);
+                }
+            }
+            else if (tree->tok.expression == EXPR_BIN_MINUS) {
+                if (left - right >= 0) {
+                    tree->tok.expression = EXPR_NUM;
+                    tree->tok.number = left - right;
+                }
+                else {
+                    tree->tok.expression = EXPR_UN_MINUS;
+                    token temp_tok = {EXPR_NUM, '\0', llabs(left - right)};
+                    tree->left = token_tree_create(temp_tok, tree, NULL, NULL);
+                }
+            }
+            else if (tree->tok.expression == EXPR_BIN_MULT) {
+                if (left * right >= 0) {
+                    tree->tok.expression = EXPR_NUM;
+                    tree->tok.number = left * right;
+                }
+                else {
+                    tree->tok.expression = EXPR_UN_MINUS;
+                    token temp_tok = {EXPR_NUM, '\0', llabs(left * right)};
+                    tree->left = token_tree_create(temp_tok, tree, NULL, NULL);
+                }
+            }
+            else if (tree->tok.expression == EXPR_BIN_DIV) {
+                if (left / right >= 0) {
+                    tree->tok.expression = EXPR_NUM;
+                    tree->tok.number = left / right;
+                }
+                else {
+                    tree->tok.expression = EXPR_UN_MINUS;
+                    token temp_tok = {EXPR_NUM, '\0', llabs(left / right)};
+                    tree->left = token_tree_create(temp_tok, tree, NULL, NULL);
+                }
+            }
+            else if (tree->tok.expression == EXPR_BIN_POW) {
+                if (pow(left, right) >= 0) {
+                    tree->tok.expression = EXPR_NUM;
+                    tree->tok.number = pow(left, right);
+                }
+                else {
+                    tree->tok.expression = EXPR_UN_MINUS;
+                    token temp_tok = {EXPR_NUM, '\0', llabs((long long) pow(left, right))};
+                    tree->left = token_tree_create(temp_tok, tree, NULL, NULL);
+                }
+            }
+        }
+    }
+}
+
+void token_tree_print_inf(token_tree *tree) {
+    if (tree == NULL) {
+        return;
+    }
+
+    if (tree->left == NULL && tree->right == NULL) {
+        op_print(tree->tok);
+    }
+    else if (tree->right == NULL) {
+        printf("(-");
+        token_tree_print_inf(tree->left);
+        printf(")");
+    }
+    else {
+        if (op_precedence(&tree->left->tok) < op_precedence(&tree->tok)) {
+            printf("(");
+        }
+        token_tree_print_inf(tree->left);
+        if (op_precedence(&tree->left->tok) < op_precedence(&tree->tok)) {
+            printf(")");
+        }
+        op_print(tree->tok);
+        if (op_precedence(&tree->right->tok) < op_precedence(&tree->tok)) {
+            printf("(");
+        }
+        token_tree_print_inf(tree->right);
+        if (op_precedence(&tree->right->tok) < op_precedence(&tree->tok)) {
+            printf(")");
+        }
+    }
+}
+
+//plus and minus
+/*
+void token_tree_simplify2(token_tree *tree) {
+    if (tree == NULL) {
+        return;
+    }
+    token_tree_simplify2(tree->left);
+    token_tree_simplify2(tree->right);
+    if (tree->left != NULL && tree->right != NULL && 
+        (tree->tok.expression == EXPR_BIN_PLUS || tree->tok.expression == EXPR_BIN_MINUS)) 
+    {
+        int left_expr = tree->left->tok.expression;
+        int right_expr = tree->left->tok.expression;
+        if ((left_expr == EXPR_NUM || left_expr == EXPR_UN_MINUS) && right_expr == EXPR_VAR ||
+            (right_expr == EXPR_NUM || right_expr == EXPR_UN_MINUS) && left_expr == EXPR_VAR)
+        {
+
+        }
+    }
+}
+*/
+
+void token_tree_simplify(token_tree *tree) {
+    token_tree_simplify1(tree);
+    //token_tree_simplify2(tree);
+}
+
+void token_tree_delete(token_tree *tree) {
+    if (tree == NULL) {
+        return;
+    }
+    token_tree_delete(tree->left);
+    token_tree_delete(tree->right);
+    free(tree);
 }
 
 /////////////////////////////////////////////////////////

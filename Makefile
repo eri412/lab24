@@ -8,7 +8,7 @@ SRC_PATH = ./src
 .PHONY: all clean
 
 all: $(BIN_PATH)/main.o $(BIN_PATH)/token.o $(BIN_PATH)/token_vec.o $(BIN_PATH)/parse.o $(BIN_PATH)/token_tree.o
-	$(CC) $(CFLAGS) $^ -o prog
+	$(CC) $(CFLAGS) $^ -o prog -lm
 
 $(BIN_PATH)/main.o: $(SRC_PATH)/main.c
 	$(CC) $(CFLAGS) -c $< -o $@

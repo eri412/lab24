@@ -15,6 +15,10 @@ typedef struct token_tree {
 token_tree *token_tree_create(token tok, token_tree *parent, token_tree *left, token_tree *right);
 void _token_tree_print_aux(token_tree *tree, int level);
 void token_tree_print(token_tree *tree);
+void token_tree_simplify1(token_tree *tree);
+void token_tree_simplify(token_tree *tree);
+void token_tree_print_inf(token_tree *tree);
+void token_tree_delete(token_tree *tree);
 
 typedef struct {
     size_t size;

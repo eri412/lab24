@@ -22,5 +22,6 @@ typedef struct {
 } token;
 
 int op_precedence(token *tok);
+void op_print(token tok);
 
 #endif
